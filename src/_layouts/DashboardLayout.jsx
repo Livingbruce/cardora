@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../utils/supabase";
@@ -9,6 +8,14 @@ import Faq from "../pages/dashboard/Faq";
 import CcChecker from "../pages/dashboard/checker/ccChecker";
 import DumpChecker from "../pages/dashboard/checker/dumpChecker";
 import "../styles/dashboard/layout.css";
+
+const ALLOWED_UNAPPROVED_PATHS = new Set([
+  "/dashboard",
+  "/dashboard/",
+  "/dashboard/Funds",
+  "/dashboard/Rules",
+  "/dashboard/Faq"
+]);
 
 const belongsToCurrentUser = (row, uid, username) => {
   const handles = new Set([username, `@${username}`].filter(Boolean));
@@ -21,15 +28,64 @@ const belongsToCurrentUser = (row, uid, username) => {
   return Boolean(rowHandle && handles.has(rowHandle));
 };
 
+const getLocalDayKey = (dateObj, timeZone) => {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    ...(timeZone ? { timeZone } : {})
+  });
+  return formatter.format(dateObj);
+};
+
+const formatLastSignIn = (isoString, options = {}) => {
+  if (!isoString) return "N/A";
+  const date = new Date(isoString);
+  if (Number.isNaN(date.getTime())) return "N/A";
+
+  const { timeZone = "" } = options;
+  const now = new Date();
+
+  const isToday =
+    getLocalDayKey(date, timeZone) === getLocalDayKey(now, timeZone);
+
+  const hour12 = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    ...(timeZone ? { timeZone } : {})
+  })
+    .format(date)
+    .replace(/\s?(AM|PM)$/i, "");
+
+  
+
+  const timePair = `${hour12}`;
+
+  if (isToday) {
+    return `Today ${timePair}`;
+  }
+
+  const dateLabel = new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    ...(timeZone ? { timeZone } : {})
+  }).format(date);
+
+  return `${dateLabel} ${timePair}`;
+};
+
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [checkerOpen, setCheckerOpen] = useState(false);
   const [userId, setUserId] = useState(null);
   const [username, setUsername] = useState("");
+  const [lastSignInLabel, setLastSignInLabel] = useState("N/A");
   const [remainingBalance, setRemainingBalance] = useState(0);
   const [orderCount, setOrderCount] = useState(0);
   const [cumulativeOrderPrice, setCumulativeOrderPrice] = useState(0);
   const [pendingPayment, setPendingPayment] = useState(null);
+  const [hasApprovedPayment, setHasApprovedPayment] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
 
   const isLoggingOutRef = useRef(false);
@@ -50,6 +106,7 @@ export default function DashboardLayout() {
       clearTabSessionId();
       setSidebarOpen(false);
       setPendingPayment(null);
+      setHasApprovedPayment(false);
       setCheckingAuth(true);
 
       const targetUid = uidToClear || activeUidRef.current;
@@ -109,6 +166,7 @@ export default function DashboardLayout() {
 
       activeUidRef.current = currentUser.id;
       setUserId(currentUser.id);
+      setLastSignInLabel(formatLastSignIn(currentUser.last_sign_in_at));
 
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
@@ -133,6 +191,7 @@ export default function DashboardLayout() {
 
       const [
         pendingRes,
+        approvedRes,
         shopRes,
         ccRes,
         dumpRes,
@@ -146,6 +205,13 @@ export default function DashboardLayout() {
           .eq("client_uid", currentUser.id)
           .eq("status", "pending")
           .order("id", { ascending: false })
+          .limit(1),
+
+        supabase
+          .from("payments")
+          .select("id")
+          .eq("client_uid", currentUser.id)
+          .eq("status", "approved")
           .limit(1),
 
         supabase
@@ -180,7 +246,11 @@ export default function DashboardLayout() {
           ? pendingRes.data[0]
           : null;
 
+      const isApprovedUnlocked =
+        Boolean(approvedRes.data && approvedRes.data.length > 0);
+
       setPendingPayment(activePending);
+      setHasApprovedPayment(isApprovedUnlocked);
       setUsername(resolvedUsername);
       setRemainingBalance(Number(profile.balance || 0));
 
@@ -234,9 +304,18 @@ export default function DashboardLayout() {
   );
 
   useEffect(() => {
+    if (
+      !checkingAuth &&
+      !hasApprovedPayment &&
+      !ALLOWED_UNAPPROVED_PATHS.has(location.pathname)
+    ) {
+      navigate("/dashboard/Funds", { replace: true });
+    }
+  }, [checkingAuth, hasApprovedPayment, location.pathname, navigate]);
+
+  useEffect(() => {
     const activeRef = { current: true };
 
-    // Defer the initial verification until after the effect's synchronous execution.
     Promise.resolve().then(() => {
       if (activeRef.current) {
         void verifySessionAndProfile(activeRef);
@@ -292,13 +371,25 @@ export default function DashboardLayout() {
     terminateSessionAndLogout(activeUidRef.current);
   };
 
+  const handleLockedNavClick = (e) => {
+    e.preventDefault();
+    closeSidebar();
+    navigate("/dashboard/Funds");
+  };
+
+  const lockedLinkStyle = {
+    opacity: 0.45,
+    cursor: "not-allowed",
+  };
+
+  const isCheckerVisible = checkerOpen && hasApprovedPayment;
+
   if (checkingAuth) {
     return null;
   }
 
   return (
     <div className="dashboard-container">
-      {/* Full-Screen Lock Prompt While Payment Is Being Processed */}
       {pendingPayment && (
         <div
           style={{
@@ -419,7 +510,6 @@ export default function DashboardLayout() {
         </div>
       )}
 
-      {/* Mobile Top Navigation Header */}
       <header className="dashboard-header">
         <div className="mobile-header-left">
           <button
@@ -442,13 +532,11 @@ export default function DashboardLayout() {
         <h2 style={{ margin: 0, fontSize: "1.1rem" }}>CARDORA</h2>
       </header>
 
-      {/* Backdrop overlay for mobile */}
       <div
         className={`sidebar-overlay ${sidebarOpen ? "open" : ""}`}
         onClick={closeSidebar}
       />
 
-      {/* Sidebar */}
       <aside className={`dashboard-sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-top-notif">
           <Notification
@@ -487,7 +575,9 @@ export default function DashboardLayout() {
           <Link
             to="/dashboard/source/source1"
             className="dashboard-nav-link"
-            onClick={closeSidebar}
+            aria-disabled={!hasApprovedPayment}
+            style={!hasApprovedPayment ? lockedLinkStyle : undefined}
+            onClick={hasApprovedPayment ? closeSidebar : handleLockedNavClick}
           >
             <svg
               width="18"
@@ -508,7 +598,9 @@ export default function DashboardLayout() {
           <Link
             to="/dashboard/Dumps"
             className="dashboard-nav-link"
-            onClick={closeSidebar}
+            aria-disabled={!hasApprovedPayment}
+            style={!hasApprovedPayment ? lockedLinkStyle : undefined}
+            onClick={hasApprovedPayment ? closeSidebar : handleLockedNavClick}
           >
             <svg
               width="18"
@@ -529,7 +621,9 @@ export default function DashboardLayout() {
           <Link
             to="/dashboard/Novbv"
             className="dashboard-nav-link"
-            onClick={closeSidebar}
+            aria-disabled={!hasApprovedPayment}
+            style={!hasApprovedPayment ? lockedLinkStyle : undefined}
+            onClick={hasApprovedPayment ? closeSidebar : handleLockedNavClick}
           >
             <svg
               width="18"
@@ -546,12 +640,20 @@ export default function DashboardLayout() {
             Buy NOVBV BINS
           </Link>
 
-          {/* Card Checker Dropdown Section */}
           <div className="nav-dropdown-container">
             <button
               type="button"
               className="nav-dropdown-header"
-              onClick={() => setCheckerOpen(!checkerOpen)}
+              aria-disabled={!hasApprovedPayment}
+              style={!hasApprovedPayment ? lockedLinkStyle : undefined}
+              onClick={() => {
+                if (!hasApprovedPayment) {
+                  setCheckerOpen(false);
+                  navigate("/dashboard/Funds");
+                  return;
+                }
+                setCheckerOpen((prev) => !prev);
+              }}
             >
               <div className="nav-dropdown-left">
                 <svg
@@ -569,12 +671,12 @@ export default function DashboardLayout() {
                 Card Checker
               </div>
 
-              <span className={`dropdown-arrow ${checkerOpen ? "open" : ""}`}>
+              <span className={`dropdown-arrow ${isCheckerVisible ? "open" : ""}`}>
                 ▼
               </span>
             </button>
 
-            {checkerOpen && (
+            {isCheckerVisible && (
               <div className="nav-submenu">
                 <Link
                   to="/dashboard/checker/ccChecker"
@@ -666,7 +768,9 @@ export default function DashboardLayout() {
           <Link
             to="/dashboard/Tickets"
             className="dashboard-nav-link"
-            onClick={closeSidebar}
+            aria-disabled={!hasApprovedPayment}
+            style={!hasApprovedPayment ? lockedLinkStyle : undefined}
+            onClick={hasApprovedPayment ? closeSidebar : handleLockedNavClick}
           >
             <svg
               width="18"
@@ -714,7 +818,6 @@ export default function DashboardLayout() {
         </nav>
       </aside>
 
-      {/* Main Content Area */}
       <main className="dashboard-main">
         <div className="dashboard-content">
           <div className="dashboard-stats-grid">
@@ -730,16 +833,15 @@ export default function DashboardLayout() {
 
             <div className="stat-card">
               <h4>Shop Stats</h4>
-              <p>Active</p>
+              <p>{hasApprovedPayment ? "118K CVV" : "0"}</p>
             </div>
 
             <div className="stat-card">
               <h4>Latest Update</h4>
-              <p>v1.0 Online</p>
+              <p>{lastSignInLabel}</p>
             </div>
           </div>
 
-          {/* Dynamic Page Display Area */}
           <div className="dashboard-view-area">
             <Outlet />
           </div>
@@ -748,10 +850,13 @@ export default function DashboardLayout() {
 
       {location.pathname === "/dashboard/Rules" && <Rules />}
       {location.pathname === "/dashboard/Faq" && <Faq />}
-      {location.pathname === "/dashboard/checker/ccChecker" && <CcChecker />}
-      {location.pathname === "/dashboard/checker/dumpChecker" && (
-        <DumpChecker />
+      {hasApprovedPayment && location.pathname === "/dashboard/checker/ccChecker" && (
+        <CcChecker />
       )}
+      {hasApprovedPayment &&
+        location.pathname === "/dashboard/checker/dumpChecker" && (
+          <DumpChecker />
+        )}
     </div>
   );
 }
