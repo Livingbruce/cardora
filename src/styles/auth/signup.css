@@ -1,0 +1,145 @@
+.signup-page-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: #000000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 20px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.signup-form {
+  background-color: #0f0f13;
+  border: 1px solid #222230;
+  border-radius: 16px;
+  padding: 36px 32px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.signup-logo {
+  display: block;
+  margin: 0 auto 20px auto;
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 2px solid #33334d;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.signup-heading {
+  text-align: center;
+  margin-bottom: 8px;
+  color: #ffffff;
+  font-size: 1.625rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.signup-notice {
+  text-align: center;
+  color: #8a8aab;
+  font-size: 0.85rem;
+  margin-bottom: 24px;
+}
+
+.signup-input-group {
+  margin-bottom: 14px;
+  width: 100%;
+}
+
+.signup-input {
+  width: 100%;
+  padding: 12px 16px;
+  background-color: #171721;
+  border: 1px solid #2d2d42;
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 0.95rem;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.signup-input::placeholder {
+  color: #7a7a99;
+}
+
+.signup-input:focus {
+  outline: none;
+  border-color: #16a34a;
+  background-color: #1f1f2e;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.25);
+}
+
+.signup-submit-btn {
+  width: 100%;
+  padding: 12px;
+  background-color: #28a745;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.signup-submit-btn:hover:not(:disabled) {
+  background-color: #218838;
+}
+
+.signup-submit-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.signup-submit-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.signup-signin-container {
+  margin-top: 15px;
+  text-align: center;
+  width: 100%;
+}
+
+.signup-signin-btn {
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  padding: 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  width: 100%;
+  font-weight: 600;
+  transition: background-color 0.2s ease;
+}
+
+.signup-signin-btn:hover {
+  background-color: #0056b3;
+}
+
+@media (max-width: 480px) {
+  .signup-form {
+    padding: 24px 20px;
+    border: none;
+    background-color: transparent;
+    box-shadow: none;
+    max-width: 100%;
+  }
+  .signup-page-container {
+    padding: 16px;
+  }
+}
