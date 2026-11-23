@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { loginWithDeviceIsolation } from "../../utils/sessionGuard";
+import cardoraLogo from "../../assets/cardoralogo.jpeg";
 import "../../styles/auth/login.css";
 
 const UPPER_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ";
@@ -237,7 +238,7 @@ export default function Login() {
     <div className="login-page-container">
       <form onSubmit={handleLogin} className="login-form">
         <img
-          src="./src/assets/cardoralogo.jpeg"
+          src={cardoraLogo}
           alt="Cardora Logo"
           className="login-logo"
         />

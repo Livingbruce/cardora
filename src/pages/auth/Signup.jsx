@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../utils/supabase";
+import cardoraLogo from "../../assets/cardoralogo.jpeg";
 import {
   getOrCreateDeviceId,
   createNewTabSessionId,
@@ -319,7 +320,11 @@ export default function Signup() {
   return (
     <div className="signup-page-container">
       <form onSubmit={handleSignup} className="signup-form">
-        <img src="./src/assets/cardoralogo.jpeg" alt="Cardora Logo" className="signup-logo" />
+        <img 
+          src={cardoraLogo}
+          alt="Cardora Logo" 
+          className="signup-logo" 
+        />
         <h2 className="signup-heading">CARDORA</h2>
         <p className="signup-notice">By registering you agree to our shop rules</p>
 
