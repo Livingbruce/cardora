@@ -3,8 +3,6 @@ import { supabase } from "../../../utils/supabase";
 import { banks, level, brand } from "../../../components/countrys";
 import "../../../styles/dashboard/sources/source1.css";
 
-const CART_STORAGE_KEY = "cardora_cvv_cart";
-
 const FlagIndicator = ({ value, label }) => (
   <span
     className={`source1-flag ${value ? "is-yes" : "is-no"}`}
@@ -56,16 +54,8 @@ export default function Source1() {
   const [refreshTick, setRefreshTick] = useState(0);
 
   const [selectedIds, setSelectedIds] = useState([]);
-  const [addingToCart, setAddingToCart] = useState(false);
-  const [cartItems, setCartItems] = useState(() => {
-    try {
-      const saved = localStorage.getItem(CART_STORAGE_KEY);
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-  const [cartNotice, setCartNotice] = useState("");
+  const [placingOrder, setPlacingOrder] = useState(false);
+  const [orderNotice, setOrderNotice] = useState("");
 
   const [bankSearch, setBankSearch] = useState("");
   const [levelSearch, setLevelSearch] = useState("");
@@ -311,14 +301,14 @@ export default function Source1() {
   }, [levelDropdownOpen]);
 
   const handleToggleRow = (id) => {
-    setCartNotice("");
+    setOrderNotice("");
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
   };
 
   const handleToggleSelectAll = (e) => {
-    setCartNotice("");
+    setOrderNotice("");
     if (e.target.checked) {
       const visibleIds = cvvRows.map((row) => row.id);
       setSelectedIds((prev) => Array.from(new Set([...prev, ...visibleIds])));
@@ -328,15 +318,15 @@ export default function Source1() {
     }
   };
 
-  const handleAddToCart = async () => {
-    if (addingToCart) return;
+  const handlePlaceOrder = async () => {
+    if (placingOrder) return;
     if (selectedIds.length === 0) {
-      setCartNotice("Select at least one CVV row to add to cart.");
+      setOrderNotice("Select at least one CVV row to place an order.");
       return;
     }
 
-    setAddingToCart(true);
-    setCartNotice("");
+    setPlacingOrder(true);
+    setOrderNotice("");
 
     try {
       const { data: authData } = await supabase.auth.getUser();
@@ -350,50 +340,42 @@ export default function Source1() {
       });
 
       if (error) {
-        setCartNotice(error.message || "Failed to add items to cart.");
+        setOrderNotice(error.message || "Failed to place order.");
         return;
       }
 
       if (!data?.ok) {
-        setCartNotice(data?.error || "Could not process cart order.");
+        setOrderNotice(data?.error || "Could not process order.");
         return;
       }
 
       const createdOrders = Array.isArray(data.orders) ? data.orders : [];
-      const existingIds = new Set(cartItems.map((item) => item.stock_id ?? item.id));
-      const newAdditions = createdOrders.filter(
-        (item) => !existingIds.has(item.stock_id)
-      );
-      const updatedCart = [...cartItems, ...newAdditions];
 
-      setCartItems(updatedCart);
       try {
-        localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(updatedCart));
         window.dispatchEvent(
           new CustomEvent("cardora:cart-updated", {
             detail: {
               newBalance: data.new_balance,
               deducted: data.deducted,
-              cart: updatedCart
+              orders: createdOrders
             }
           })
         );
       } catch {
-        // Ignore storage errors
+        // Ignore event errors
       }
 
-      setSelectedIds([]);
       setRefreshTick((prev) => prev + 1);
-      setCartNotice(
-        `Deducted $${Number(data.deducted || 0).toFixed(2)}, added ${
-          newAdditions.length
-        } item(s) to cart, and sent order to admin.`
+      setOrderNotice(
+        `Order placed for ${selectedIds.length} item(s). Deducted $${Number(
+          data.deducted || 0
+        ).toFixed(2)}.`
       );
     } catch (err) {
-      console.error("Add to cart error:", err);
-      setCartNotice(err.message || "Unexpected error adding to cart.");
+      console.error("Place order error:", err);
+      setOrderNotice(err.message || "Unexpected error placing order.");
     } finally {
-      setAddingToCart(false);
+      setPlacingOrder(false);
     }
   };
 
@@ -835,18 +817,15 @@ export default function Source1() {
             <button
               type="button"
               className="source1-btn-cart"
-              onClick={handleAddToCart}
-              disabled={addingToCart}
+              onClick={handlePlaceOrder}
+              disabled={placingOrder}
             >
-              {addingToCart ? "Processing..." : `Add to Cart (${selectedIds.length})`}
+              {placingOrder ? "Placing Order..." : "Place Order"}
             </button>
-            <span className="source1-cart-badge">
-              In Cart: {cartItems.length}
-            </span>
           </div>
 
-          {cartNotice && (
-            <span className="source1-cart-notice">{cartNotice}</span>
+          {orderNotice && (
+            <span className="source1-cart-notice">{orderNotice}</span>
           )}
         </div>
 

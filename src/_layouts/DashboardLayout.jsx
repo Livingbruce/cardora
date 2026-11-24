@@ -58,8 +58,6 @@ const formatLastSignIn = (isoString, options = {}) => {
     .format(date)
     .replace(/\s?(AM|PM)$/i, "");
 
-  
-
   const timePair = `${hour12}`;
 
   if (isToday) {
@@ -383,6 +381,7 @@ export default function DashboardLayout() {
   };
 
   const isCheckerVisible = checkerOpen && hasApprovedPayment;
+  const showActivationPrompt = !hasApprovedPayment && !pendingPayment;
 
   if (checkingAuth) {
     return null;
@@ -820,6 +819,95 @@ export default function DashboardLayout() {
 
       <main className="dashboard-main">
         <div className="dashboard-content">
+          {showActivationPrompt && (
+            <div
+              role="region"
+              aria-label="Account activation notice"
+              style={{
+                backgroundColor: "#0f172a",
+                border: "1px solid #334155",
+                borderLeft: "4px solid #f3ba2f",
+                borderRadius: "12px",
+                padding: "18px 20px",
+                marginBottom: "18px",
+                color: "#f8fafc",
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "16px",
+              }}
+            >
+              <div style={{ flex: "1 1 360px", minWidth: "240px" }}>
+                {/* Priority 1: Immediate status reassurance */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    marginBottom: "6px",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: "0.72rem",
+                      fontWeight: 800,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.06em",
+                      padding: "3px 8px",
+                      borderRadius: "9999px",
+                      backgroundColor: "rgba(243, 186, 47, 0.16)",
+                      color: "#facc15",
+                    }}
+                  >
+                    Account Activation Required
+                  </span>
+                  <strong style={{ fontSize: "1rem", color: "#ffffff" }}>
+                    Your account is ready — complete your first deposit to unlock full access.
+                  </strong>
+                </div>
+
+                {/* Priority 2: Activation fee & credit clarification */}
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: "0.9rem",
+                    color: "#cbd5e1",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  Until your first deposit is approved, inventory and checker views remain in standby mode.{" "}
+                  <strong style={{ color: "#f8fafc" }}>
+                    💰 Activation Fee: The activation amount will be credited directly to your account balance and added to your available funds.
+                  </strong>{" "}
+                  Complete your account activation today and enjoy the full platform experience!
+                </p>
+              </div>
+
+              {/* Priority 3: Direct CTA */}
+              {location.pathname !== "/dashboard/Funds" && (
+                <button
+                  type="button"
+                  onClick={() => navigate("/dashboard/Funds")}
+                  style={{
+                    padding: "10px 16px",
+                    borderRadius: "8px",
+                    border: "none",
+                    backgroundColor: "#f3ba2f",
+                    color: "#0b0e11",
+                    fontWeight: 700,
+                    fontSize: "0.9rem",
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Activate Account
+                </button>
+              )}
+            </div>
+          )}
+
           <div className="dashboard-stats-grid">
             <div className="stat-card">
               <h4>Your Balance</h4>
